@@ -119,10 +119,9 @@ def _do_get(url):
     result = _urlopen(url)
     g = result.geturl()
     content_type = result.headers.get('content-type')
-    _log.getLogger(__name__).info('HTTP GET(%d) %s: %s',
-                                  result.getcode(), result.msg, g)
+    _log.getLogger(__name__).info('HTTP GET(%d):  %s', result.getcode(), url)
+    _log.getLogger(__name__).debug('HTTP GET(%d) %s: %s', result.getcode(), result.msg, g)
     content = result.read()
-    #_log.getLogger(__name__).debug("HTTP RESPONSE: \n%s", content)
     return _decode_codec(content, content_type)
 
 
@@ -424,7 +423,7 @@ def post_page_by_url(url, configFile, section, data, headers={}, **kw):
     subr = kw.get('subresource')
     if subr is not None:
         url = '/'.join([url.strip('/'),subr])
-    _log.getLogger(__name__).info('post_page_by_url: url="%s"',  url)
+    _log.getLogger(__name__).debug('post_page_by_url: url="%s"',  url)
     d = _urlopen(url, data, headers=headers)
     _log.getLogger(__name__).info("HTTP POST(%d): %s", d.code, url)
     _log.getLogger(__name__).debug("BODY:\n%s", data)

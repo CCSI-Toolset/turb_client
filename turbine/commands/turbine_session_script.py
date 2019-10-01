@@ -175,7 +175,7 @@ def main_create_jobs(args=None, func=_print_page):
 
 
 def stop_jobs(configFile, sessionid):
-    return post_page(configFile, SECTION, "", subresource='%s/stop' % sessionid)
+    return post_page(configFile, SECTION, b'', subresource='%s/stop' % sessionid)
 
 
 def main_stop_jobs(args=None):
@@ -223,9 +223,69 @@ def main_delete(args=None, func=_print_page):
     log.debug("PAGE: %s" % page)
     return int(page)
 
+def post_session_results(configFile, sessionid):
+    """ Request next page number with finished jobs
+    """
+    return post_page(configFile, SECTION, b'', subresource='%s/result/00000000-0000-0000-0000-000000000000' % sessionid)
+
+def main_create_session_result_page(args=None, func=_print_page):
+    """Terminate jobs in session in state setup, running.  Print number of jobs terminated.
+    """
+    op = optparse.OptionParser(usage="USAGE: %prog SESSIONID  CONFIG_FILE",
+                               description=main_kill_jobs.__doc__)
+
+    (options, args) = op.parse_args(args)
+    if len(args) < 1:
+        op.error('expecting >= 1 arguments')
+
+    sessionid = args[0]
+    try:
+        configFile = _open_config(*args[1:])
+    except Exception as ex:
+        op.error(ex)
+
+    page = post_session_results(configFile, sessionid)
+    #data = json.load(page)
+    data = int(page)
+    if func:
+        func(data)
+    return data
+
+
+def main_get_session_result_page(args=None, func=_print_page):
+    """Terminate jobs in session in state setup, running.  Print number of jobs terminated.
+    """
+    op = optparse.OptionParser(usage="USAGE: %prog SESSIONID PAGE_NUMBER CONFIG_FILE",
+                               description=main_kill_jobs.__doc__)
+    (options, args) = op.parse_args(args)
+    if len(args) < 2:
+        op.error('expecting >= 2 arguments')
+
+
+    sessionid = args[0]
+    page_number = args[1]
+    try:
+        configFile = _open_config(*args[2:])
+    except Exception as ex:
+        op.error(ex)
+
+    page = get_session_page_results(configFile, sessionid, int(page_number))
+
+    if page:
+        page = json.loads(page)
+
+    #data = int(page)
+    if func:
+        func(page)
+    return page
+
+
+def get_session_page_results(configFile, sessionid, page_number):
+    return get_page(configFile, SECTION, subresource="%s/result/00000000-0000-0000-0000-000000000000/%d" %(sessionid,page_number))
+
 
 def kill_jobs(configFile, sessionid):
-    return post_page(configFile, SECTION, "", subresource='%s/kill' % sessionid)
+    return post_page(configFile, SECTION, b'', subresource='%s/kill' % sessionid)
 
 
 def main_kill_jobs(args=None, func=_print_page):
@@ -301,7 +361,7 @@ def get_results(cp, sessionid, options):
     query['verbose'] = verbose
     query['rpp'] = str(rpp)
     query['page'] = pagenum
-    print(query)
+    _log.getLogger(__name__).debug('query: %s' %(query))
 
     pages = []
     _log.getLogger(__name__).debug("downloading results 1-%d" % (int(rpp)))
