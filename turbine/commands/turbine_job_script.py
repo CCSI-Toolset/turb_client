@@ -118,7 +118,7 @@ def main(args=None, func=_print_as_json):
                     for k, v in i.items():
                         print("\t%12s -- %s" % (k, v))
             else:
-                print("\t%s" % map(lambda m: m['Id'], flist))
+                print("\t%s" % list(map(lambda m: m['Id'], flist)))
     elif func is not None and callable(func):
         _print_as_json(all)
 
