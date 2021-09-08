@@ -110,8 +110,8 @@ def main(args=None, func=_print_as_json):
         for state in states:
             if options.state is not None and options.state != state:
                 continue
-            flist = filter(lambda e: e['State'] == state, all)
-            print("\t%s JOBS: %d" % (state.upper(), len(list(flist))))
+            flist = list(filter(lambda e: e['State'] == state, all))
+            print("\t%s JOBS: %d" % (state.upper(), len(flist)))
             if options.verbose:
                 for i in flist:
                     print
