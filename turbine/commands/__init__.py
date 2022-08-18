@@ -45,7 +45,12 @@ def handler_http_error(func):
             sys.exit(1)
         return r
     return _exit_on_http_error
-
+    
+def load_pages_json(pages):
+    data = []
+    for p in pages:
+        data += json.loads(p)
+    return data
 
 def _print_page(page, out=sys.stdout):
     print(page, file=out)
@@ -58,11 +63,6 @@ def _print_numbered_lines(data, out=sys.stdout):
 
 def _print_as_json(data, out=sys.stdout, **kw):
     print(json.dumps(data), file=out)
-
-
-""" Internal methods
-"""
-
 
 def _open_config(filename=None):
     """ _open_config:  Reads the config parser file, initializes logging.
@@ -80,9 +80,8 @@ def _open_config(filename=None):
     cp.optionxform = str
     cp.read(filename)
     _open_config.cache_cp = cp
-    _setup_logging(cp)
+    #_setup_logging(cp)
     return cp
-
 
 def getFromConfigWithDefaults(cp, section, var, default):
     try:
@@ -102,47 +101,47 @@ def _make_url(url, **query):
     return url
 
 
-def _urlopen(url, data=None, headers={}):
-    """ HTTP 401 responses are handled by the chain, and the request is retried with credentials.
-    However the response to this is not checked, so errors will not be thrown.  This function
-    simply checks to see if there was an HTTPError, and throws one.
-    """
-    request = urllib.request.Request(url, data=data, headers=headers)
-    result = urllib.request.urlopen(request)
-    if not (200 <= result.code < 300):
-        raise urllib.error.HTTPError(
-            result.url, result.code, result.msg, result.headers, result.fp)
-    return result
-
-
-def _do_get(url):
-    result = _urlopen(url)
-    g = result.geturl()
-    content_type = result.headers.get('content-type')
-    _log.getLogger(__name__).info('HTTP GET(%d):  %s', result.getcode(), url)
-    _log.getLogger(__name__).debug('HTTP GET(%d) %s: %s', result.getcode(), result.msg, g)
-    content = result.read()
-    return _decode_codec(content, content_type)
-
-
-def _setup_logging(cp):
-    """ Function will configure the logger only ONCE
-    """
-    if getattr(_setup_logging, 'done', False):
-        return
-    assert isinstance(cp, ConfigParser)
-    try:
-        fileConfig = cp.get('Logging', 'fileConfig')
-        _loggingconfig.fileConfig(fileConfig)
-    except Exception as ex:
-        _log.basicConfig(
-            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-            level=_log.ERROR
-        )
-
-    l = _log.getLogger(__name__)
-    l.debug('Setup Logging Done')
-    _setup_logging.done = True
+# def _urlopen(url, data=None, headers={}):
+#     """ HTTP 401 responses are handled by the chain, and the request is retried with credentials.
+#     However the response to this is not checked, so errors will not be thrown.  This function
+#     simply checks to see if there was an HTTPError, and throws one.
+#     """
+#     request = urllib.request.Request(url, data=data, headers=headers)
+#     result = urllib.request.urlopen(request)
+#     if not (200 <= result.code < 300):
+#         raise urllib.error.HTTPError(
+#             result.url, result.code, result.msg, result.headers, result.fp)
+#     return result
+#
+#
+# def _do_get(url):
+#     result = _urlopen(url)
+#     g = result.geturl()
+#     content_type = result.headers.get('content-type')
+#     _log.getLogger(__name__).info('HTTP GET(%d):  %s', result.getcode(), url)
+#     _log.getLogger(__name__).debug('HTTP GET(%d) %s: %s', result.getcode(), result.msg, g)
+#     content = result.read()
+#     return _decode_codec(content, content_type)
+#
+#
+# def _setup_logging(cp):
+#     """ Function will configure the logger only ONCE
+#     """
+#     if getattr(_setup_logging, 'done', False):
+#         return
+#     assert isinstance(cp, ConfigParser)
+#     try:
+#         fileConfig = cp.get('Logging', 'fileConfig')
+#         _loggingconfig.fileConfig(fileConfig)
+#     except Exception as ex:
+#         _log.basicConfig(
+#             format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+#             level=_log.ERROR
+#         )
+#
+#     l = _log.getLogger(__name__)
+#     l.debug('Setup Logging Done')
+#     _setup_logging.done = True
 
 
 class TurbineHTTPDefaultErrorHandler(urllib.request.HTTPDefaultErrorHandler):
@@ -312,226 +311,220 @@ def add_options(op):
                   action="store_true", dest="verbose", default=False,
                   help="verbose output")
 
-
-def add_session_option(op):
-    op.add_option("-s", "--session",
-                  action="store", dest="session", default=None,
-                  help="session identifier (guid)")
-
-
-def add_json_option(op):
-    """
-    """
-    op.add_option("-j", "--json",
-                  action="store_true", dest="json", default=False,
-                  help="print results as json to stdout")
+#
+# def add_session_option(op):
+#     op.add_option("-s", "--session",
+#                   action="store", dest="session", default=None,
+#                   help="session identifier (guid)")
 
 
-def delete_page(configFile, section, **kw):
-    """ HTTP DELETE
-    """
-    url = configFile.get(section, 'url')
-    _setup(configFile, url)
-    subr = kw.get('subresource')
-    if subr is not None:
-        url = '/'.join([url.strip('/'),subr])
-    request = urllib.request.Request(url, data=None)
-    request.get_method = lambda: 'DELETE'
-    _log.getLogger(__name__).debug("DELETE URL: %s", url)
-    p = _opener.open(request)
-    return p.read()
+# def add_json_option(op):
+#     """
+#     """
+#     op.add_option("-j", "--json",
+#                   action="store_true", dest="json", default=False,
+#                   help="print results as json to stdout")
+#
+
+# def delete_page(configFile, section, **kw):
+#     """ HTTP DELETE
+#     """
+#     url = configFile.get(section, 'url')
+#     _setup(configFile, url)
+#     subr = kw.get('subresource')
+#     if subr is not None:
+#         url = '/'.join([url.strip('/'),subr])
+#     request = urllib.request.Request(url, data=None)
+#     request.get_method = lambda: 'DELETE'
+#     _log.getLogger(__name__).debug("DELETE URL: %s", url)
+#     p = _opener.open(request)
+#     return p.read()
+#
+#
+# def put_page(configFile, section, data, **kw):
+#     """
+#     data -- data to PUT
+#     """
+#     url = configFile.get(section, 'url')
+#     return _put_page_by_url(url, configFile, section, data, **kw)
+#
+#
+# def _encode_codec(data, content_type):
+#     _log.getLogger(__name__).debug(" Encode Content-Type: %s", content_type)
+#     if type(data) is str:
+#         if content_type == 'application/json; charset=utf-8':
+#             codec_name = 'utf-8'
+#         elif content_type == 'application/octet-stream':
+#             codec_name = 'latin-1'
+#         else:
+#             codec_name = 'utf-8'
+#         return data.encode(codec_name)
+#     if type(data) is bytes:
+#         if content_type == 'application/octet-stream':
+#             return data
+#     _log.error("Bad Data Type %s", type(data))
+#     raise RuntimeError("Bad Data Type %s" % type(data))
+#
+#
+# def _decode_codec(data, content_type):
+#     _log.getLogger(__name__).debug("Decode Content-Type: %s", content_type)
+#     if type(data) is bytes:
+#         if content_type == 'application/json; charset=utf-8':
+#             codec_name = 'utf-8'
+#         elif content_type == 'application/octet-stream':
+#             codec_name = 'latin-1'
+#         elif content_type == 'text/plain':
+#             codec_name = 'latin-1'
+#         else:
+#             codec_name = 'utf-8'
+#         _log.getLogger(__name__).debug("Type: %s", type(data))
+#         return data.decode(codec_name)
+#     _log.getLogger(__name__).error("Bad Data Type %s", type(data))
+#     raise RuntimeError("Bad Data Type %s" % type(data))
 
 
-def put_page(configFile, section, data, **kw):
-    """
-    data -- data to PUT
-    """
-    url = configFile.get(section, 'url')
-    return _put_page_by_url(url, configFile, section, data, **kw)
+# def _put_page_by_url(url, configFile, section, data, content_type='application/octet-stream', **kw):
+#     """
+#     data -- data to PUT
+#     """
+#     codec_name = None
+#     _setup(configFile, url)
+#     subr = kw.get('subresource')
+#     if subr is not None:
+#         url = '/'.join([url.strip('/'),subr])
+#
+#     ## AWS: Get Signed URL and PUT
+#
+#     data = _encode_codec(data, content_type)
+#     request = urllib.request.Request(url, data=data)
+#     request.add_header('Content-Type', content_type)
+#     request.get_method = lambda: 'PUT'
+#     try:
+#         d = _opener.open(request)
+#     except urllib.error.HTTPError as ex:
+#         _log.getLogger(__name__).debug("HTTPError: " + str(ex.__dict__))
+#         _log.getLogger(__name__).debug("HTTPError: " + str(ex.readline()))
+#         raise
+#
+#     _log.getLogger(__name__).info("HTTP PUT(%d): %s", d.code, url)
+#     _log.getLogger(__name__).debug("Content-Type: %s", content_type)
+#     #_log.getLogger(__name__).debug("BODY:\n%s", data)
+#     content = d.read()
+#     #_log.getLogger(__name__).debug("HTTP RESPONSE: \n%s", content)
+#     return _decode_codec(content, d.headers.get('Content-Type'))
 
 
-def _encode_codec(data, content_type):
-    _log.getLogger(__name__).debug(" Encode Content-Type: %s", content_type)
-    if type(data) is str:
-        if content_type == 'application/json; charset=utf-8':
-            codec_name = 'utf-8'
-        elif content_type == 'application/octet-stream':
-            codec_name = 'latin-1'
-        else:
-            codec_name = 'utf-8'
-        return data.encode(codec_name)
-    if type(data) is bytes:
-        if content_type == 'application/octet-stream':
-            return data
-    _log.error("Bad Data Type %s", type(data))
-    raise RuntimeError("Bad Data Type %s" % type(data))
+# def post_page_by_url(url, configFile, section, data, headers={}, **kw):
+#     """
+#     data -- data to POST
+#     """
+#     _setup(configFile, url)
+#     subr = kw.get('subresource')
+#     if subr is not None:
+#         url = '/'.join([url.strip('/'),subr])
+#     _log.getLogger(__name__).debug('post_page_by_url: url="%s"',  url)
+#     d = _urlopen(url, data, headers=headers)
+#     _log.getLogger(__name__).info("HTTP POST(%d): %s", d.code, url)
+#     _log.getLogger(__name__).debug("BODY:\n%s", data)
+#     content = d.read()
+#     _log.getLogger(__name__).debug("HTTP RESPONSE: \n%s", content)
+#     return _decode_codec(content, d.headers.get('Content-Type'))
+#
+
+# def post_page(configFile, section, data, **kw):
+#     """
+#     data -- data to POST
+#     """
+#     url = configFile.get(section, 'url')
+#     return post_page_by_url(url, configFile, section, data, **kw)
+
+#
+# def get_page_by_url(url, configFile, **extra_query):
+#     _setup(configFile, url)
+#     query = {}
+#     for k, v in extra_query.items():
+#         if k == 'subresource' and v:
+#             url = '/'.join([url.strip('/'),v])
+#         elif callable(v):
+#             query[k] = v()
+#         else:
+#             query[k] = v
+#
+#     page_url = _make_url(url, **query)
+#     _log.getLogger(__name__).debug('retrieving job metadata: %s', page_url)
+#     return _do_get(page_url)
 
 
-def _decode_codec(data, content_type):
-    _log.getLogger(__name__).debug("Decode Content-Type: %s", content_type)
-    if type(data) is bytes:
-        if content_type == 'application/json; charset=utf-8':
-            codec_name = 'utf-8'
-        elif content_type == 'application/octet-stream':
-            codec_name = 'latin-1'
-        elif content_type == 'text/plain':
-            codec_name = 'latin-1'
-        else:
-            codec_name = 'utf-8'
-        _log.getLogger(__name__).debug("Type: %s", type(data))
-        return data.decode(codec_name)
-    _log.getLogger(__name__).error("Bad Data Type %s", type(data))
-    raise RuntimeError("Bad Data Type %s" % type(data))
-
-
-def _put_page_by_url(url, configFile, section, data, content_type='application/octet-stream', **kw):
-    """
-    data -- data to PUT
-    """
-    codec_name = None
-    _setup(configFile, url)
-    subr = kw.get('subresource')
-    if subr is not None:
-        url = '/'.join([url.strip('/'),subr])
-
-    ## AWS: Get Signed URL and PUT
-
-    data = _encode_codec(data, content_type)
-    request = urllib.request.Request(url, data=data)
-    request.add_header('Content-Type', content_type)
-    request.get_method = lambda: 'PUT'
-    try:
-        d = _opener.open(request)
-    except urllib.error.HTTPError as ex:
-        _log.getLogger(__name__).debug("HTTPError: " + str(ex.__dict__))
-        _log.getLogger(__name__).debug("HTTPError: " + str(ex.readline()))
-        raise
-
-    _log.getLogger(__name__).info("HTTP PUT(%d): %s", d.code, url)
-    _log.getLogger(__name__).debug("Content-Type: %s", content_type)
-    #_log.getLogger(__name__).debug("BODY:\n%s", data)
-    content = d.read()
-    #_log.getLogger(__name__).debug("HTTP RESPONSE: \n%s", content)
-    return _decode_codec(content, d.headers.get('Content-Type'))
-
-
-def post_page_by_url(url, configFile, section, data, headers={}, **kw):
-    """
-    data -- data to POST
-    """
-    _setup(configFile, url)
-    subr = kw.get('subresource')
-    if subr is not None:
-        url = '/'.join([url.strip('/'),subr])
-    _log.getLogger(__name__).debug('post_page_by_url: url="%s"',  url)
-    d = _urlopen(url, data, headers=headers)
-    _log.getLogger(__name__).info("HTTP POST(%d): %s", d.code, url)
-    _log.getLogger(__name__).debug("BODY:\n%s", data)
-    content = d.read()
-    _log.getLogger(__name__).debug("HTTP RESPONSE: \n%s", content)
-    return _decode_codec(content, d.headers.get('Content-Type'))
-
-
-def post_page(configFile, section, data, **kw):
-    """
-    data -- data to POST
-    """
-    url = configFile.get(section, 'url')
-    return post_page_by_url(url, configFile, section, data, **kw)
-
-
-def get_page_by_url(url, configFile, **extra_query):
-    _setup(configFile, url)
-    query = {}
-    for k, v in extra_query.items():
-        if k == 'subresource' and v:
-            url = '/'.join([url.strip('/'),v])
-        elif callable(v):
-            query[k] = v()
-        else:
-            query[k] = v
-
-    page_url = _make_url(url, **query)
-    _log.getLogger(__name__).debug('retrieving job metadata: %s', page_url)
-    return _do_get(page_url)
-
-
-def get_page(configFile, section, **extra_query):
-    url = configFile.get(section, 'url')
-    _log.getLogger(__name__).debug('get_page url: "%s"', url)
-    content = get_page_by_url(url, configFile, **extra_query)
-    return content
+# def get_page(configFile, section, **extra_query):
+#     url = configFile.get(section, 'url')
+#     _log.getLogger(__name__).debug('get_page url: "%s"', url)
+#     content = get_page_by_url(url, configFile, **extra_query)
+#     return content
 
 # Returns a URL with the subresource tacked on and a complete set of query parameters
 
 
-def standardizeOptions(url, options, **extra_query):
-    query = {}
-    for k, v in extra_query.items():
-        if k == 'subresource' and v:
-            url = '/'.join([url.strip('/'),v])
-        elif callable(v):
-            query[k] = v()
-        else:
-            query[k] = v
-
-    query['rpp'] = options.rpp
-    query['page'] = options.page
-
-    if options.verbose:
-        query['verbose'] = options.verbose
-
-    return (url, query)
-
-
-def get_paging_by_url(url, configFile, section, query):
-    """ If page>0, returns a list with a single string representing the response
-    If page=0, gets all contents by automatically paging and
-    returns a list of strings representing all the queries
-    """
-    _setup(configFile, url)
-
-    allResults = []
-
-    # page == 0 will automatically collect all the results
-    # page > 0 will request a specific page, and only return those results
-    if query["page"] == 0:
-        query["page"] = 1
-        # query["page"] == 1 is just to get us past the first iteration
-        # if we got fewer than the requested results per page, we must have run out all the results
-        isNext = False
-        while query["page"] == 1 or isNext:
-            page_url = _make_url(url, **query)
-            _log.getLogger(__name__).debug(
-                'retrieving job metadata: %s', page_url)
-            thisResults = _do_get(page_url)
-            allResults.append(thisResults)
-            query["page"] += 1
-            # Fix, how do I actually tell when I have all the data?
-            isNext = len(thisResults) > 4096
-
-    elif query["page"] >= 1:
-        page_url = _make_url(url, **query)
-        _log.getLogger(__name__).debug('retrieving job metadata: %s', page_url)
-        allResults.append(_do_get(page_url))
-    else:
-        _log.getLogger(__name__).debug(
-            'ignore page query parameter: ' + query["page"])
-
-    return allResults
-
-
-def get_paging(configFile, section, options, **extra_query):
-    """
-    Returns a list, each item is the result of a query
-    """
-    url = configFile.get(section, 'url')
-    (url, query) = standardizeOptions(url, options, **extra_query)
-    return get_paging_by_url(url, configFile, section, query)
-
-
-def load_pages_json(pages):
-    data = []
-    for p in pages:
-        data += json.loads(p)
-    return data
+# def standardizeOptions(url, options, **extra_query):
+#     query = {}
+#     for k, v in extra_query.items():
+#         if k == 'subresource' and v:
+#             url = '/'.join([url.strip('/'),v])
+#         elif callable(v):
+#             query[k] = v()
+#         else:
+#             query[k] = v
+#
+#     query['rpp'] = options.rpp
+#     query['page'] = options.page
+#
+#     if options.verbose:
+#         query['verbose'] = options.verbose
+#
+#     return (url, query)
+# #
+#
+# def get_paging_by_url(url, configFile, section, query):
+#     """ If page>0, returns a list with a single string representing the response
+#     If page=0, gets all contents by automatically paging and
+#     returns a list of strings representing all the queries
+#     """
+#     _setup(configFile, url)
+#
+#     allResults = []
+#
+#     # page == 0 will automatically collect all the results
+#     # page > 0 will request a specific page, and only return those results
+#     if query["page"] == 0:
+#         query["page"] = 1
+#         # query["page"] == 1 is just to get us past the first iteration
+#         # if we got fewer than the requested results per page, we must have run out all the results
+#         isNext = False
+#         while query["page"] == 1 or isNext:
+#             page_url = _make_url(url, **query)
+#             _log.getLogger(__name__).debug(
+#                 'retrieving job metadata: %s', page_url)
+#             thisResults = _do_get(page_url)
+#             allResults.append(thisResults)
+#             query["page"] += 1
+#             # Fix, how do I actually tell when I have all the data?
+#             isNext = len(thisResults) > 4096
+#
+#     elif query["page"] >= 1:
+#         page_url = _make_url(url, **query)
+#         _log.getLogger(__name__).debug('retrieving job metadata: %s', page_url)
+#         allResults.append(_do_get(page_url))
+#     else:
+#         _log.getLogger(__name__).debug(
+#             'ignore page query parameter: ' + query["page"])
+#
+#     return allResults
+#
+# #
+# def get_paging(configFile, section, options, **extra_query):
+#     """
+#     Returns a list, each item is the result of a query
+#     """
+#     url = configFile.get(section, 'url')
+#     (url, query) = standardizeOptions(url, options, **extra_query)
+#     return get_paging_by_url(url, configFile, section, query)
+#

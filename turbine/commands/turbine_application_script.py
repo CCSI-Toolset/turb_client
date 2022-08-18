@@ -18,8 +18,10 @@ import json
 import logging as _log
 import optparse
 from urllib.error import HTTPError
-from turbine.commands import add_options, add_json_option, get_page, get_paging, _print_as_json, put_page, post_page,\
-    _open_config, load_pages_json
+from . import add_options, _print_as_json, _open_config, load_pages_json
+from .requests_base import get_page, put_page, delete_page, post_page,\
+    get_page_by_url, read_configuration,\
+    RequestException, HTTPError, ConnectionError
 
 SECTION = "Application"
 
@@ -39,27 +41,23 @@ def _print_list(all, verbose=False, out=sys.stdout):
             print("\t%d. %12s: %s" % (i+1, e['Name'], str(e)), file=out)
 
 
-def main_list(args=None, func=_print_list):
+def main_list(args=None, func=_print_as_json):
     """List all application resources, by default print in human readable format.
     """
     op = optparse.OptionParser(usage="USAGE: %prog [options] CONFIG_FILE",
                                description=main_list.__doc__)
     add_options(op)
-    add_json_option(op)
     (options, args) = op.parse_args(args)
 
     if len(args) != 1:
         op.error('expecting 1 argument')
-
-    if options.json:
-        func = _print_as_json
 
     configFile = _open_config(args[0])
     query = {}
 
     options.page = 1
     content = get_page(configFile, SECTION, **query)
-    data = load_pages_json([content])
+    data = json.loads(content)
     if func:
         func(data, verbose=options.verbose)
     return data
