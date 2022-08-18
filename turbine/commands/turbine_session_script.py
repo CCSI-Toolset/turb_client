@@ -9,6 +9,9 @@
 #   $Rev: 4480 $
 #
 ###########################################################################
+import urllib.request
+import urllib.error
+from urllib.parse import urljoin
 import sys
 import json
 import optparse
@@ -19,83 +22,71 @@ import time
 import time
 import dateutil.parser
 import datetime
-import logging as _log
-from urllib.error import HTTPError
-from turbine.commands import add_options, add_json_option, delete_page, post_page, \
-    get_page, get_paging, get_paging_by_url, _open_config, getFromConfigWithDefaults, \
-    _print_page, _print_numbered_lines, _print_as_json, load_pages_json, \
+import logging
+from turbine.utility import basic_session_stats
+from .requests_base import get_page, put_page, delete_page, post_page,\
+    get_page_by_url, read_configuration,\
+    RequestException, HTTPError, ConnectionError
+from . import add_options,\
+    _open_config, load_pages_json, _print_page,\
+    _print_page, _print_numbered_lines, _print_as_json,\
+    getFromConfigWithDefaults,\
     HEADER_CONTENT_TYPE_JSON
 
-from turbine.utility import basic_session_stats
-
 SECTION = "Session"
+_log = logging.getLogger(__name__)
 
 
-def main_list(args=None, func=_print_numbered_lines):
+def main_list(args=None):
     """Prints human readable listing of all session GUIDs.
     """
     op = optparse.OptionParser(usage="USAGE: %prog [options] CONFIG_FILE",
                                description=main_list.__doc__)
 
     add_options(op)
-    add_json_option(op)
     (options, args) = op.parse_args(args)
     try:
         configFile = _open_config(*args)
     except Exception as ex:
         op.error(ex)
 
-    if options.json:
-        func = _print_as_json
-
-    query = {}
-    pages = get_paging(configFile, SECTION, options, **query)
+    func = _print_as_json
+    query = dict(page=options.page, rpp=options.rpp)
+    pages = []
+    pages.append(get_page(configFile, SECTION, **query))
     data = load_pages_json(pages)
     if func:
         func(data)
     return data
 
-
-def jobs_status(configFile, sessionid):
-    query = {}
-    query['subresource'] = sessionid + "/status"
-    data = get_page(configFile, SECTION, **query)
-
-    return json.loads(data)
-
-
-def main_jobs_status(args=None, func=_print_as_json):
-    """session resource utility, lists all session resources
+def main_session_status(args=None, func=_print_as_json):
+    """session resource utility, lists all jobs states of session resource
     """
     op = optparse.OptionParser(usage="USAGE: %prog [options] SESSIONID CONFIG_FILE",
-                               description=main_jobs_status.__doc__)
+                               description=main_session_status.__doc__)
     add_options(op)
     (options, args) = op.parse_args(args)
 
     if len(args) < 1:
         op.error('expecting >= 1 argument')
 
-    sessionid = args[0]
+    session_id = args[0]
     try:
         configFile = _open_config(*args[1:])
     except Exception as ex:
         op.error(ex)
 
-    data = jobs_status(configFile, sessionid)
+    #data = session_status(configFile, sessionid)
+    query = {}
+    query['subresource'] = session_id
+    data = get_page(configFile, SECTION, **query)
+    page = json.loads(data)
     if func:
-        func(data)
+        func(page)
     return data
 
 
-def create_session(configFile):
-    """ returns a GUID, must remove quotes
-    """
-    contents = post_page(configFile, SECTION, b'')
-    _log.getLogger(__name__).debug("SESSION: %s", contents)
-    return contents.strip('"')
-
-
-def main_create_session(args=None, func=_print_page):
+def main_create_session(args=None, func=_print_as_json):
     """Creates new session resource and prints GUID of created session.
     """
     op = optparse.OptionParser(usage="USAGE: %prog CONFIG_FILE",
@@ -108,10 +99,11 @@ def main_create_session(args=None, func=_print_page):
     except Exception as ex:
         op.error(ex)
 
-    page = create_session(configFile)
+    contents = post_page(configFile, SECTION, b'')
+    page = contents.strip('"')
     data = uuid.UUID(page)
     if (func):
-        func(data)
+        func(str(data))
     return data
 
 
@@ -128,7 +120,7 @@ def create_jobs(configFile, sessionid, jobsList):
         subresource=sessionid)
 
 
-def main_create_jobs(args=None, func=_print_page):
+def main_create_jobs(args=None, func=_print_as_json):
     """Appends job descriptions to a session, prints the number of jobs added.
     """
     op = optparse.OptionParser(usage="USAGE: %prog SESSIONID JOBS_FILE CONFIG_FILE",
@@ -145,8 +137,7 @@ def main_create_jobs(args=None, func=_print_page):
     except Exception as ex:
         op.error(ex)
 
-    log = _log.getLogger(__name__)
-    log.debug("main_create_jobs")
+    _log.debug("main_create_jobs")
 
     try:
         with open(jobs_file) as fd:
@@ -167,7 +158,8 @@ def main_create_jobs(args=None, func=_print_page):
         log.error(ex)
         log.error(ex.fp.read())
         raise
-    log.debug("PAGE: %s" % page)
+
+    _log.debug("PAGE: %s" % page)
     data = json.loads(page)
     if (func):
         func(data)
@@ -207,88 +199,26 @@ def main_delete(args=None, func=_print_page):
     if len(args) < 1:
         op.error('expecting >= 1 arguments')
 
-    sessionid = args[0]
+    session_id = args[0]
     try:
         configFile = _open_config(*args[1:])
     except Exception as ex:
         op.error(ex)
 
-    log = _log.getLogger(__name__)
-
     try:
-        page = delete_page(configFile, SECTION, subresource='%s' % sessionid)
+        page = delete_page(configFile, SECTION, subresource='%s' % session_id)
     except HTTPError as ex:
         log.error(ex)
         raise
-    log.debug("PAGE: %s" % page)
+    _log.debug("PAGE: %s" % page)
     return int(page)
-
-def post_session_results(configFile, sessionid):
-    """ Request next page number with finished jobs
-    """
-    return post_page(configFile, SECTION, b'', subresource='%s/result/00000000-0000-0000-0000-000000000000' % sessionid)
-
-def main_create_session_result_page(args=None, func=_print_page):
-    """Terminate jobs in session in state setup, running.  Print number of jobs terminated.
-    """
-    op = optparse.OptionParser(usage="USAGE: %prog SESSIONID  CONFIG_FILE",
-                               description=main_kill_jobs.__doc__)
-
-    (options, args) = op.parse_args(args)
-    if len(args) < 1:
-        op.error('expecting >= 1 arguments')
-
-    sessionid = args[0]
-    try:
-        configFile = _open_config(*args[1:])
-    except Exception as ex:
-        op.error(ex)
-
-    page = post_session_results(configFile, sessionid)
-    #data = json.load(page)
-    data = int(page)
-    if func:
-        func(data)
-    return data
-
-
-def main_get_session_result_page(args=None, func=_print_page):
-    """Terminate jobs in session in state setup, running.  Print number of jobs terminated.
-    """
-    op = optparse.OptionParser(usage="USAGE: %prog SESSIONID PAGE_NUMBER CONFIG_FILE",
-                               description=main_kill_jobs.__doc__)
-    (options, args) = op.parse_args(args)
-    if len(args) < 2:
-        op.error('expecting >= 2 arguments')
-
-
-    sessionid = args[0]
-    page_number = args[1]
-    try:
-        configFile = _open_config(*args[2:])
-    except Exception as ex:
-        op.error(ex)
-
-    page = get_session_page_results(configFile, sessionid, int(page_number))
-
-    if page:
-        page = json.loads(page)
-
-    #data = int(page)
-    if func:
-        func(page)
-    return page
-
-
-def get_session_page_results(configFile, sessionid, page_number):
-    return get_page(configFile, SECTION, subresource="%s/result/00000000-0000-0000-0000-000000000000/%d" %(sessionid,page_number))
 
 
 def kill_jobs(configFile, sessionid):
     return post_page(configFile, SECTION, b'', subresource='%s/kill' % sessionid)
 
 
-def main_kill_jobs(args=None, func=_print_page):
+def main_kill_jobs(args=None):
     """Terminate jobs in session in state setup, running.  Print number of jobs terminated.
     """
     op = optparse.OptionParser(usage="USAGE: %prog SESSIONID  CONFIG_FILE",
@@ -305,11 +235,7 @@ def main_kill_jobs(args=None, func=_print_page):
         op.error(ex)
 
     page = kill_jobs(configFile, sessionid)
-    #data = json.load(page)
-    data = int(page)
-    if func:
-        func(data)
-    return data
+    print(page)
 
 
 def start_jobs(configFile, sessionid):
@@ -337,76 +263,15 @@ def main_start_jobs(args=None, func=_print_page):
     except Exception as ex:
         op.error(ex)
 
-    _log.getLogger(__name__).debug("main_start_jobs")
+    _log.debug("main_start_jobs")
     page = start_jobs(configFile, sessionid)
     data = json.loads(page)
     if func:
         func(data)
     return data
-
-
-def get_results(cp, sessionid, options):
-    """ Gets all jobs from the session and return them as a list """
-    # default values for a few important items
-
-    url = '/'.join([cp.get(SECTION, 'url').strip('/'),sessionid])
-    #rpp = getFromConfigWithDefaults(cp,SECTION, 'rpp', '100')
-    verbose = getFromConfigWithDefaults(cp, SECTION, 'verbose', 'false')
-
-    pagenum = options.page
-    rpp = options.rpp
-
-    query = {}
-    query['subresource'] = sessionid
-    query['verbose'] = verbose
-    query['rpp'] = str(rpp)
-    query['page'] = pagenum
-    _log.getLogger(__name__).debug('query: %s' %(query))
-
-    pages = []
-    _log.getLogger(__name__).debug("downloading results 1-%d" % (int(rpp)))
-    if (pagenum > 0):
-        thispage = get_paging_by_url(url, cp, SECTION, query)
-        pages.extend(thispage)
-    else:
-        pagenum = 1
-        query['page'] = 1
-        thispage = get_paging_by_url(url, cp, SECTION, query)
-        while(thispage[0] != '[]'):
-            pages.extend(thispage)
-            pagenum += 1
-            query['page'] = pagenum
-            _log.getLogger(__name__).debug("downloading results %d-%d" %
-                                           ((pagenum-1) * int(rpp), pagenum * int(rpp)))
-            thispage = get_paging_by_url(url, cp, SECTION, query)
-
     #assert(type(pages), list)
     print("all results recieved.")
     data = load_pages_json(pages)
-    return data
-
-
-def main_get_results(args=None, func=_print_page):
-    """Gets the results of all the completed jobs in this session
-    """
-    op = optparse.OptionParser(usage="USAGE: %prog SESSIONID  CONFIG_FILE",
-                               description=main_get_results.__doc__)
-
-    add_options(op)
-
-    (options, args) = op.parse_args(args)
-    if len(args) < 1:
-        op.error('expecting >= 1 arguments')
-
-    sessionid = args[0]
-    try:
-        cp = _open_config(*args[1:])
-    except Exception as ex:
-        op.error(ex)
-
-    data = get_results(cp, sessionid, options)
-    if func:
-        func(json.dumps(data, indent=2))
     return data
 
 
