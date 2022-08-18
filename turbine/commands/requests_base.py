@@ -125,8 +125,7 @@ def put_page(configFile, section, data, content_type='', **kw):
     #    return r.raw
     logging.getLogger(__name__).debug('HTTP PUT(%s)', r.status_code)
     if r.status_code != 200:
-        logging.getLogger(__name__).error('upload failed: %s' %str(r.__dict__))
-        raise RuntimeError("HTTP PUT(%s) failure for %s" %(r.status_code,url))
+        raise HTTPStatusCode(r)
     return r.text
 
 def _put_page(url, auth, data=None, allow_redirects=False, headers={}, **params):
@@ -164,8 +163,7 @@ def post_page(configFile, section, data, **kw):
     #    return r.raw
     logging.getLogger(__name__).debug('HTTP PUT(%s)', r.status_code)
     if r.status_code != 200:
-        logging.getLogger(__name__).error('upload failed: %s' %str(r.__dict__))
-        raise RuntimeError("HTTP PUT(%s) failure for %s" %(r.status_code,url))
+        raise HTTPStatusCode(r)
     return r.text
 
 def post_page_by_url(url, auth, data=None, allow_redirects=False, headers={}, **params):
