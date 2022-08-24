@@ -4,5 +4,10 @@ turbine_job_script
 
 See LICENSE.md for copyright notice!
 """
+import os,os.path
+import logging.config
+logging_file = os.environ.get("TURBINE_LOGGING_CONF", 'logging.conf')
+if os.path.isfile(logging_file):
+    logging.config.fileConfig(logging_file)
 from turbine.commands import turbine_session_script
 turbine_session_script.main_stop_jobs()

@@ -81,7 +81,7 @@ setup(
              "scripts/turbine_session_stop",
              "scripts/turbine_session_status",
              "scripts/turbine_session_stats",
-             "scripts/turbine_session_get_results",
+             "scripts/turbine_session_results",
              "scripts/turbine_session_delete",
              "scripts/turbine_session_graphs",
              "scripts/turbine_consumer_log",

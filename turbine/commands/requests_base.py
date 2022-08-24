@@ -9,6 +9,16 @@ functions utilizing the python requests module.
 __author__ = 'Joshua Boverhof <jrboverhof@lbl.gov>'
 import os,logging,requests,configparser
 from requests.exceptions import RequestException, HTTPError, ConnectionError
+from requests import Response
+
+class HTTPStatusCode(Exception):
+    def __init__(self, rsp:Response):
+        self.response = rsp
+        msg = 'HTTP(%d) - %s' %(rsp.status_code, rsp.content)
+        super().__init__(self, msg)
+    @property
+    def code(self):
+        return self.response.code
 
 #def standard_options(url, options, **extra_query):
 def read_configuration(configFile, section, **kw):
@@ -56,15 +66,15 @@ def read_configuration(configFile, section, **kw):
 
 def delete_page(configFile, section, **kw):
     url,auth,params = read_configuration(configFile,section,**kw)
-    return _delete_page(url, auth, **params).text
+    r = _delete_page(url, auth, **params)
+    if r.status_code != 200:
+        raise HTTPStatusCode(r)
+    return r.text
 
 def _delete_page(url, auth, **params):
     """
     parameters:
         auth --- username and password tuple
-    keyword params
-        -- SignedUrl, service will return signed S3 URL and it Will
-        automatically be followed.
     """
     assert type(auth) is tuple
     logging.getLogger(__name__).debug('_delete_page url: "%s"', url)
@@ -73,6 +83,14 @@ def _delete_page(url, auth, **params):
 def get_page(configFile, section, **kw):
     url,auth,params = read_configuration(configFile,section,**kw)
     r = _get_page(url, auth, **params)
+    if r.status_code != 200:
+        raise HTTPStatusCode(r)
+    return r.text
+
+def get_page_by_url(url, auth, **kw):
+    r = _get_page(url, auth, **kw)
+    if r.status_code != 200:
+        raise HTTPStatusCode(r)
     return r.text
 
 def _get_page(url, auth, **params):
@@ -110,8 +128,7 @@ def put_page(configFile, section, data, content_type='', **kw):
     #    return r.raw
     logging.getLogger(__name__).debug('HTTP PUT(%s)', r.status_code)
     if r.status_code != 200:
-        logging.getLogger(__name__).error('upload failed: %s' %str(r.__dict__))
-        raise RuntimeError("HTTP PUT(%s) failure for %s" %(r.status_code,url))
+        raise HTTPStatusCode(r)
     return r.text
 
 def _put_page(url, auth, data=None, allow_redirects=False, headers={}, **params):
@@ -125,3 +142,47 @@ def _put_page(url, auth, data=None, allow_redirects=False, headers={}, **params)
     assert type(auth) in (tuple,type(None)), '%s' %type(auth)
     logging.getLogger(__name__).debug('_put_page url: "%s" "%s"', url, params)
     return requests.put(url, data, allow_redirects=allow_redirects, params=params, auth=auth, headers=headers)
+
+
+def post_page(configFile, section, data, **kw):
+    """
+    """
+    url,auth,params = read_configuration(configFile,section,**kw)
+    signed_url = params.get('SignedUrl', False)
+    if url.split('/')[-2] == 'simulation':
+        logging.getLogger(__name__).debug('upload simulation meta data')
+        if 'SignedUrl' in params:
+            del params['SignedUrl']
+    elif signed_url is True:
+        #logging.getLogger(__name__).debug('put_page signed_url: "%s" "%s"', url, str(params))
+        r = _post_page(url, auth, data='', allow_redirects=False, **params)
+        assert r.status_code == 302, "HTTP Status Code %d" %r.status_code
+        url = r.headers.get('Location')
+        auth = None
+        del params['SignedUrl']
+    #logging.getLogger(__name__).debug('put_page: "%s" "%s"', url, str(params))
+    r = _post_page(url, auth, data, allow_redirects=True, **params)
+    #if raw_data
+    #    return r.raw
+    logging.getLogger(__name__).debug('HTTP PUT(%s)', r.status_code)
+    if r.status_code != 200:
+        raise HTTPStatusCode(r)
+    return r.text
+
+def post_page_by_url(url, auth, data=None, allow_redirects=False, headers={}, **params):
+    r = _post_page(url, auth, data=data, allow_redirects=allow_redirects, headers=headers, **params)
+    if r.status_code != 200:
+        raise HTTPStatusCode(r)
+    return r
+
+def _post_page(url, auth, data=None, allow_redirects=False, headers={}, **params):
+    """
+    parameters:
+        auth --- username and password tuple
+    keyword params
+        -- SignedUrl, service will return signed S3 URL and it Will
+        automatically be followed.
+    """
+    assert type(auth) in (tuple,type(None)), '%s' %type(auth)
+    logging.getLogger(__name__).debug('_post_page url: "%s" "%s"', url, params)
+    return requests.post(url, data, allow_redirects=allow_redirects, params=params, auth=auth, headers=headers)

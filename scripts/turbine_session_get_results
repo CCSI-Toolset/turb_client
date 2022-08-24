@@ -1,8 +1,0 @@
-#!/usr/bin/env python
-"""
-turbine_session_get_results
-
-See LICENSE.md for copyright notice!
-"""
-from turbine.commands import turbine_session_script
-turbine_session_script.main_get_results()
