@@ -100,6 +100,7 @@ def post_session_result(url, auth, session_id,
     """
     result_url = '%s%s/result/%s' %(url, session_id, result_id)
     data = post_page_by_url(result_url, auth, **kw)
+
     page_numb = int(data.content)
     _log.debug("Result Page Number %d", page_numb)
     return page_numb

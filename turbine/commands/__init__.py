@@ -45,7 +45,7 @@ def handler_http_error(func):
             sys.exit(1)
         return r
     return _exit_on_http_error
-    
+
 def load_pages_json(pages):
     data = []
     for p in pages:
@@ -124,24 +124,24 @@ def _make_url(url, **query):
 #     return _decode_codec(content, content_type)
 #
 #
-# def _setup_logging(cp):
-#     """ Function will configure the logger only ONCE
-#     """
-#     if getattr(_setup_logging, 'done', False):
-#         return
-#     assert isinstance(cp, ConfigParser)
-#     try:
-#         fileConfig = cp.get('Logging', 'fileConfig')
-#         _loggingconfig.fileConfig(fileConfig)
-#     except Exception as ex:
-#         _log.basicConfig(
-#             format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-#             level=_log.ERROR
-#         )
-#
-#     l = _log.getLogger(__name__)
-#     l.debug('Setup Logging Done')
-#     _setup_logging.done = True
+def _setup_logging(cp):
+    """ Function will configure the logger only ONCE
+    """
+    if getattr(_setup_logging, 'done', False):
+        return
+    assert isinstance(cp, ConfigParser)
+    try:
+        fileConfig = cp.get('Logging', 'fileConfig')
+        _loggingconfig.fileConfig(fileConfig)
+    except Exception as ex:
+        _log.basicConfig(
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            level=_log.ERROR
+        )
+
+    l = _log.getLogger(__name__)
+    l.debug('Setup Logging Done')
+    _setup_logging.done = True
 
 
 class TurbineHTTPDefaultErrorHandler(urllib.request.HTTPDefaultErrorHandler):
@@ -311,20 +311,20 @@ def add_options(op):
                   action="store_true", dest="verbose", default=False,
                   help="verbose output")
 
-#
-# def add_session_option(op):
-#     op.add_option("-s", "--session",
-#                   action="store", dest="session", default=None,
-#                   help="session identifier (guid)")
+
+def add_session_option(op):
+    op.add_option("-s", "--session",
+                  action="store", dest="session", default=None,
+                  help="session identifier (guid)")
 
 
-# def add_json_option(op):
-#     """
-#     """
-#     op.add_option("-j", "--json",
-#                   action="store_true", dest="json", default=False,
-#                   help="print results as json to stdout")
-#
+def add_json_option(op):
+    """
+    """
+    op.add_option("-j", "--json",
+                  action="store_true", dest="json", default=False,
+                  help="print results as json to stdout")
+
 
 # def delete_page(configFile, section, **kw):
 #     """ HTTP DELETE

@@ -20,7 +20,10 @@ import optparse
 import sys
 from configparser import ConfigParser
 from urllib.error import HTTPError
-from turbine.commands import add_options, add_session_option, get_paging, get_page, states, _open_config, load_pages_json,\
+from .requests_base import get_page,\
+    get_page_by_url, read_configuration,\
+    RequestException, HTTPError, ConnectionError
+from turbine.commands import add_options, add_session_option, states, _open_config, load_pages_json,\
     _print_as_json
 from turbine.utility import basic_job_stats
 
@@ -92,7 +95,7 @@ def main(args=None, func=_print_as_json):
         return job
 
     try:
-        pages = get_paging(configFile, SECTION, options, **query)
+        pages = get_page(configFile, SECTION, **query)
     except HTTPError as ex:
         print(ex)
         print(ex.readlines())

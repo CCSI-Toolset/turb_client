@@ -86,6 +86,13 @@ def main_session_status(args=None, func=_print_as_json):
     return data
 
 
+def create_session(configFile):
+    """ returns a GUID, must remove quotes
+    """
+    contents = post_page(configFile, SECTION, b'')
+    _log.debug("SESSION: %s", contents)
+    return contents.strip('"')
+
 def main_create_session(args=None, func=_print_as_json):
     """Creates new session resource and prints GUID of created session.
     """
@@ -99,8 +106,7 @@ def main_create_session(args=None, func=_print_as_json):
     except Exception as ex:
         op.error(ex)
 
-    contents = post_page(configFile, SECTION, b'')
-    page = contents.strip('"')
+    page = create_session(configFile)
     data = uuid.UUID(page)
     if (func):
         func(str(data))

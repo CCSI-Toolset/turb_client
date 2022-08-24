@@ -16,6 +16,9 @@ class HTTPStatusCode(Exception):
         self.response = rsp
         msg = 'HTTP(%d) - %s' %(rsp.status_code, rsp.content)
         super().__init__(self, msg)
+    @property
+    def code(self):
+        return self.response.code
 
 #def standard_options(url, options, **extra_query):
 def read_configuration(configFile, section, **kw):
@@ -167,7 +170,10 @@ def post_page(configFile, section, data, **kw):
     return r.text
 
 def post_page_by_url(url, auth, data=None, allow_redirects=False, headers={}, **params):
-    return _post_page(url, auth, data=data, allow_redirects=allow_redirects, headers=headers, **params)
+    r = _post_page(url, auth, data=data, allow_redirects=allow_redirects, headers=headers, **params)
+    if r.status_code != 200:
+        raise HTTPStatusCode(r)
+    return r
 
 def _post_page(url, auth, data=None, allow_redirects=False, headers={}, **params):
     """

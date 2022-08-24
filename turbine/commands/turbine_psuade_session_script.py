@@ -20,8 +20,12 @@ import optparse
 import sys
 import os
 import time
+from .requests_base import get_page, put_page, delete_page, post_page,\
+    get_page_by_url, read_configuration,\
+    RequestException, HTTPError, ConnectionError
+
 from turbine.commands.turbine_psuade_script import *
-from turbine.commands import add_options, post_page, get_page, get_page_by_url, get_paging, _open_config
+from turbine.commands import add_options, _open_config
 from turbine.commands.turbine_session_script import *
 from configparser import ConfigParser
 import dateutil.parser
@@ -233,7 +237,7 @@ def local_unfinished(configFile, psuadeInFilename):
 
 
 def main_psuade_jobs_unfinished(args=None):
-    """Reports how many jobs remain unfinished in the session (Useful for UQ GUI) 
+    """Reports how many jobs remain unfinished in the session (Useful for UQ GUI)
     """
     op = optparse.OptionParser(usage="USAGE: %prog [options] SESSIONID CONFIG_FILE",
                                description=main_psuade_jobs_unfinished.__doc__)
