@@ -52,12 +52,19 @@ def main_list(args=None):
 
     func = _print_as_json
     query = dict(page=options.page, rpp=options.rpp)
-    pages = []
-    pages.append(get_page(configFile, SECTION, **query))
-    data = load_pages_json(pages)
+    data = list_session(configFile, **query)
     if func:
         func(data)
     return data
+
+def list_session(configFile, **kw):
+    """ returns Array of Session GUIDS
+    """
+    pages = []
+    pages.append(get_page(configFile, SECTION, **kw))
+    data = load_pages_json(pages)
+    return data
+
 
 def main_session_status(args=None, func=_print_as_json):
     """session resource utility, lists all jobs states of session resource
