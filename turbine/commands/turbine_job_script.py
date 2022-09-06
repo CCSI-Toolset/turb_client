@@ -144,5 +144,16 @@ def parseExtraArgs(configFile):
     return extraArgs
 
 
+def post_job_terminate(url, auth, job_id,
+        **kw) -> int:
+    """Returns 1 if request to stop accepted
+    POST consumer/{consumer_id}/stop
+    """
+    uuid.UUID(job_id)
+    terminate_url = '%s/%s/terminate' %(url, job_id)
+    is_term = post_page_by_url(terminate_url, auth, **kw)
+    return is_term
+
+
 if __name__ == "__main__":
     main()
