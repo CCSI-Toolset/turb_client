@@ -16,10 +16,18 @@ import time
 import dateutil.parser
 import datetime
 from urllib.error import HTTPError
-from turbine.commands import add_options, post_page, put_page, \
-    get_page, get_page_by_url, get_paging, _open_config, load_pages_json, \
-    _print_page, _print_numbered_lines, add_json_option, _print_as_json
+# from turbine.commands import add_options, post_page, put_page, \
+#     get_page, get_page_by_url, get_paging, _open_config, load_pages_json, \
+#     _print_page, _print_numbered_lines, add_json_option, _print_as_json
 
+from .requests_base import get_page, put_page, delete_page, post_page,\
+    post_page_by_url, get_page_by_url, read_configuration,\
+    RequestException, HTTPError, ConnectionError
+from . import add_options,\
+    _open_config, load_pages_json, _print_page,\
+    _print_page, _print_numbered_lines, _print_as_json,\
+    getFromConfigWithDefaults,\
+    HEADER_CONTENT_TYPE_JSON
 
 SECTION = "Consumer"
 
@@ -181,6 +189,15 @@ def main_update_config_instanceType(args=None, func=_print_page):
     if func:
         func(page)
     return page
+
+def post_consumer_stop(url, auth, consumer_id,
+        **kw) -> int:
+    """Returns 1 if request to stop accepted
+    POST consumer/{consumer_id}/stop
+    """
+    stop_url = '%s/%s/stop' %(url, consumer_id)
+    is_stopped = post_page_by_url(stop_url, auth, **kw)
+    return is_stopped
 
 
 if __name__ == "__main__":

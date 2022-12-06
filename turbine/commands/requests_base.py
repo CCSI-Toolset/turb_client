@@ -56,9 +56,13 @@ def read_configuration(configFile, section, **kw):
     verbose =  params.get('verbose', False)
     assert type(verbose) is bool
     rpp =  params.get('rpp', '0')
-    assert type(int(rpp)) is int
+    if rpp is None:
+        del params['rpp']
+    assert rpp is None or type(int(rpp)) is int
     pagenum = params.get('page', '0')
-    assert type(int(pagenum)) is int
+    if pagenum is None:
+        del params['page']
+    assert pagenum is None or type(int(pagenum)) is int
     auth = (configFile.get('Authentication', 'username', raw=True),
         configFile.get('Authentication', 'password', raw=True))
 

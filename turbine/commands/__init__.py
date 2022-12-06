@@ -302,10 +302,10 @@ def add_options(op):
 
     # Paging
     op.add_option("-p", "--page", type="int",
-                  action="store", dest="page", default=0,
+                  action="store", dest="page", default=None,
                   help="page number")
     op.add_option("-r", "--rpp", type="int",
-                  action="store", dest="rpp", default=1000,
+                  action="store", dest="rpp", default=None,
                   help="results per page")
     op.add_option("-v", "--verbose",
                   action="store_true", dest="verbose", default=False,
