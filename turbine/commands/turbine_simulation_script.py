@@ -18,7 +18,7 @@ import json
 import uuid
 import logging
 import optparse
-from .requests_base import get_page, put_page, delete_page
+from .requests_base import get_page, put_page, post_page, delete_page, is_signed_url
 from . import add_options, add_json_option,\
     _open_config, load_pages_json, _print_page
 
@@ -124,10 +124,14 @@ def main_update(args=None):
 
     kw['subresource'] = '%s/input/%s' % (simulation, options.resource)
 
+    do_page_func = put_page
+    if is_signed_url(configFile, SECTION, **kw):
+        do_page_func = post_page
+        
     with open(file_name, 'rb') as fd:
         contents = fd.read()
         try:
-            data = put_page(configFile, SECTION, contents, **kw)
+            data = do_page_func(configFile, SECTION, contents, **kw)
         except urllib.error.HTTPError as ex:
             _log.error("HTTP Code %d :  %s", ex.code, ex.msg)
             if hasattr(ex, 'readlines'):
