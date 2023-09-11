@@ -18,6 +18,7 @@ _url = "https://github.com/CCSI-Toolset/turb_client"
 # Update version from latest git tags.
 # Create a version file in the root directory
 version_py = os.path.join(os.path.dirname(__file__), 'turbine/version.py')
+"""
 try:
     git_describe = subprocess.check_output(
         ["git", "describe", "--tags", "--dirty"]).rstrip().decode('utf-8')
@@ -31,6 +32,7 @@ except Exception as e:
     # If there is an exception, this means that git is not available
     # We will used the existing version.py file
     pass
+"""
 
 try:
     with open(version_py) as f:

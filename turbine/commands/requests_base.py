@@ -18,7 +18,7 @@ class HTTPStatusCode(Exception):
         super().__init__(self, msg)
     @property
     def code(self):
-        return self.response.code
+        return self.response.status_code
 
 #def standard_options(url, options, **extra_query):
 def read_configuration(configFile, section, **kw):
@@ -87,13 +87,13 @@ def _delete_page(url, auth, **params):
 def get_page(configFile, section, **kw):
     url,auth,params = read_configuration(configFile,section,**kw)
     r = _get_page(url, auth, **params)
-    if r.status_code != 200:
+    if not r.ok or r.status_code != 200:
         raise HTTPStatusCode(r)
     return r.text
 
 def get_page_by_url(url, auth, **kw):
     r = _get_page(url, auth, **kw)
-    if r.status_code != 200:
+    if not r.ok or r.status_code != 200:
         raise HTTPStatusCode(r)
     return r.text
 
@@ -114,7 +114,7 @@ def is_signed_url(configFile, section, **kw):
     """
     url,auth,params = read_configuration(configFile,section,**kw)
     signed_url = params.get('SignedUrl', False)
-    return signed_url    
+    return signed_url
 
 def put_page(configFile, section, data, content_type='', **kw):
     """
@@ -122,7 +122,7 @@ def put_page(configFile, section, data, content_type='', **kw):
     url,auth,params = read_configuration(configFile,section,**kw)
     headers = {'Content-Type': content_type}
     signed_url = params.get('SignedUrl', False)
-    
+
     if url.split('/')[-2] == 'simulation':
         logging.getLogger(__name__).debug('upload simulation meta data')
         if 'SignedUrl' in params:
@@ -158,13 +158,13 @@ def _put_page(url, auth, data=None, allow_redirects=False, headers={}, **params)
 
 def post_page(configFile, section, data, **kw):
     """post_page
-    
+
     Signed Url:
         headers:
             Connection:close, otherwise the connection is keep-alive
             Content-Type:  must be specified as 'application/json' or
                 AWS/S3 fails..
-    
+
     """
     url,auth,params = read_configuration(configFile,section,**kw)
     signed_url = params.get('SignedUrl', False)
@@ -172,18 +172,18 @@ def post_page(configFile, section, data, **kw):
     #    logging.getLogger(__name__).debug('upload simulation meta data')
     if 'SignedUrl' in params:
         del params['SignedUrl']
-            
+
     if signed_url is True:
         logging.getLogger(__name__).debug('HTTP POST signed_url: "%s" "%s"', url, str(params))
         params['method'] = 'putObject'
-        r = _post_page(url, auth, data='', allow_redirects=False, 
+        r = _post_page(url, auth, data='', allow_redirects=False,
                        headers={'Connection': 'close', 'Content-Type':'application/json'},
                        **params)
         assert r.status_code == 302, "HTTP Status Code %d: %s" %(r.status_code, r.text)
         url = r.headers.get('Location')
         auth = None
         del params['method']
-        r = _put_page(url, auth, data, allow_redirects=True, 
+        r = _put_page(url, auth, data, allow_redirects=True,
                       headers={'Content-Type':'application/json'},
                       **params)
         logging.getLogger(__name__).debug('HTTP PUT(%s)', r.status_code)
@@ -193,7 +193,7 @@ def post_page(configFile, section, data, **kw):
         #if raw_data
         #    return r.raw
         logging.getLogger(__name__).debug('HTTP POST(%s)', r.status_code)
-        
+
     if r.status_code != 200:
         raise HTTPStatusCode(r)
     return r.text
